@@ -81,6 +81,9 @@
 
     e.preventDefault();
 
+    if (triggerEvent('page:beforeChange'))
+      return;
+
     fetch(url.absolute);
   }
 
@@ -95,18 +98,22 @@
     if (xhr && xhr.requestUrl !== url) xhr.abort();
 
     if (!xhr) {
+      triggerEvent('page:fetch', {url: url});
       xhr = $.ajax(url, { dataType: 'html' });
       xhr.requestUrl = url;
     }
 
     if (!xhr.callbacksAttached) {
       xhr.done(function(data) {
+        triggerEvent('page:receive');
+
         var doc = processResponse(xhr, data);
 
         if (doc) {
           cache.set(url, data);
           updatePage(doc);
           updateHistory(url);
+          triggerEvent('page:load');
         } else {
           document.location.href = url;
         }
@@ -131,6 +138,7 @@
     var doc = createDocument(cachedPage.data);
     updatePage(doc);
     updateHistory(url);
+    triggerEvent('page:restore');
   }
 
   function assetsChanged(doc) {
@@ -174,6 +182,8 @@
 
     var token = $(doc).find('meta[name="csrf-token"]').attr('content');
     updateCSRFToken(token);
+
+    triggerEvent('page:change');
   }
 
   function updateCSRFToken(token) {
@@ -184,6 +194,12 @@
   function updateHistory(url) {
     var current = parseUrl(document.location.href).absolute;
     if (url !== current) window.history.pushState({}, '', url);
+  }
+
+  function triggerEvent(name, params) {
+    var e = $.Event(name, params);
+    $(document).trigger(e);
+    return e.isDefaultPrevented();
   }
 
   function parseUrl(url) {
@@ -257,6 +273,8 @@
     createDocument = browserCompatibleParser();
 
     $(function() {
+      triggerEvent('page:change');
+
       var doc = $(document.documentElement).html();
       cache.set(document.location.href, doc);
     });
