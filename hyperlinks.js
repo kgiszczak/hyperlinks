@@ -3,7 +3,10 @@
 
   var createDocument,
       xhr,
+      timeout,
       cacheSize = 20;
+
+  var mouseShouldEnter = false;
 
   var cache = {
     pages: {},
@@ -40,6 +43,31 @@
   function pagesCache(size) {
     if (typeof size !== 'undefined') cacheSize = size;
     return cacheSize;
+  }
+
+  function mousemove() {
+    mouseShouldEnter = true;
+  }
+
+  function mouseenter(e) {
+    if (!mouseShouldEnter) return;
+
+    var bound = $.proxy(function() {
+      var url = parseUrl(this.href).absolute;
+
+      // return if cache is fresh
+      var cachedPage = cache.get(url);
+      if (cachedPage && cachedPage.timestamp > new Date().getTime() - 5000) return;
+
+      prefetchReplacement(url);
+    }, this);
+
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(bound, 250);
+  }
+
+  function mouseleave() {
+    if (timeout) clearTimeout(timeout);
   }
 
   function click(e) {
@@ -94,6 +122,18 @@
     fetchReplacement(url);
   }
 
+  function prefetchReplacement(url) {
+    if (xhr && xhr.requestUrl !== url) {
+      xhr.abort();
+      xhr = null;
+    }
+
+    if (!xhr) {
+      xhr = $.ajax(url, { dataType: 'html' });
+      xhr.requestUrl = url;
+    }
+  }
+
   function fetchReplacement(url) {
     if (xhr && xhr.requestUrl !== url) xhr.abort();
 
@@ -104,6 +144,8 @@
     }
 
     if (!xhr.callbacksAttached) {
+      xhr.callbacksAttached = true;
+
       xhr.done(function(data) {
         triggerEvent('page:receive');
 
@@ -126,8 +168,6 @@
       xhr.always(function() {
         xhr = null;
       });
-
-      xhr.callbacksAttached = true;
     }
   }
 
@@ -175,6 +215,8 @@
   }
 
   function updatePage(doc) {
+    mouseShouldEnter = false;
+
     document.title = $(doc).find('title').text();
     document.documentElement.replaceChild(doc.body, document.body);
 
@@ -285,6 +327,11 @@
         fetch(e.target.location.href);
       });
     }, 500);
+
+    $(document)
+      .on('mousemove', mousemove)
+      .on('mouseenter', 'a[data-prefetch]', mouseenter)
+      .on('mouseleave', 'a[data-prefetch]', mouseleave);
 
     document.addEventListener('click', function() {
       $(document)
