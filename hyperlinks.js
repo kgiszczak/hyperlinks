@@ -38,7 +38,7 @@
   };
 
   function pagesCache(size) {
-    if (size) cacheSize = size;
+    if (typeof size !== 'undefined') cacheSize = size;
     return cacheSize;
   }
 
