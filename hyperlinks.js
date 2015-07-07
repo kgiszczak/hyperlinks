@@ -1,8 +1,7 @@
 (function($) {
   'use strict';
 
-  var createDocument,
-      xhr,
+  var xhr,
       timeout,
       cacheSize = 20;
 
@@ -264,56 +263,15 @@
     };
   }
 
-  function browserCompatibleParser() {
-    function createUsingParser(html) {
-      return (new DOMParser()).parseFromString(html, 'text/html');
-    }
+  function createDocument(html) {
+    var doc = document.documentElement.cloneNode();
+    doc.innerHTML = html;
+    doc.body = doc.querySelector('body');
 
-    function createUsingDOM(html) {
-      var doc = document.implementation.createHTMLDocument('');
-      doc.documentElement.innerHTML = html;
-      return doc;
-    }
-
-    function createUsingWrite(html) {
-      var doc = document.implementation.createHTMLDocument('');
-      doc.open('replace');
-      doc.write(html);
-      doc.close();
-      return doc;
-    }
-
-    // Use createUsingParser if DOMParser is defined and natively
-    // supports 'text/html' parsing (Firefox 12+, IE 10)
-    //
-    // Use createUsingDOM if createUsingParser throws an exception
-    // due to unsupported type 'text/html' (Firefox < 12, Opera)
-    //
-    // Use createUsingWrite if:
-    //  - DOMParser isn't defined
-    //  - createUsingParser returns null due to unsupported type 'text/html' (Chrome, Safari)
-    //  - createUsingDOM doesn't create a valid HTML document (safeguarding against potential edge cases)
-
-    var testDoc;
-
-    try {
-      if (window.DOMParser) {
-        testDoc = createUsingParser('<html><body><p>test');
-        return createUsingParser;
-      }
-    } catch (e) {
-      testDoc = createUsingDOM('<html><body><p>test');
-      return createUsingDOM;
-    } finally {
-      if (!testDoc || !testDoc.body || testDoc.body.childNodes.length !== 1) {
-        return createUsingWrite;
-      }
-    }
+    return doc;
   }
 
   function init() {
-    createDocument = browserCompatibleParser();
-
     $(function() {
       triggerEvent('page:change');
 
