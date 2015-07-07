@@ -67,6 +67,10 @@
 
   function mouseleave() {
     if (timeout) clearTimeout(timeout);
+    if (xhr) {
+      xhr.abort();
+      xhr = null;
+    }
   }
 
   function click(e) {
